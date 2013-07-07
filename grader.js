@@ -24,9 +24,10 @@ References:
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
+var restler = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
-
+var TMP_DEFAULT = "/tmp";
 
 var assertFileExists = function(infile) {
     var instr = infile.toString();
@@ -61,15 +62,36 @@ var clone = function(fn) {
     // http://stackoverflow.com/a/6772648
     return fn.bind({});
 };
+var doMagic = function(file, checksFile){
+    var checkJson = checkHtmlFile(file, checksFile);
+    var outJson = JSON.stringify(checkJson, null, 4);
+    console.log(outJson);
+
+}
 
 if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+	.option('-u, --url <url>','Path to url')
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+    var url = program.url;
+    var file ;  
+    if (url){
+	restler.get(url).on('complete',function(result,response){
+	if (result){
+	var tmpFile = TMP_DEFAULT+"/bitstarter.tmp";
+	fs.writeFileSync(tmpFile,result);
+	doMagic(tmpFile, program.checks);	
+	}
+	});
+	
+	}
+   else if (program.file){
+       		file = program.file;
+		doMagic(file, program.checks);
+  }
+
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
